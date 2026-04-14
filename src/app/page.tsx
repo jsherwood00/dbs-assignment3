@@ -189,7 +189,7 @@ export default function BrowsePage() {
     if (category !== "all") params.set("category", category);
     if (search) params.set("search", search);
     const res = await fetch(`/api/fonts?${params}`);
-    const data = await res.json();
+    const data = res.ok ? await res.json() : { fonts: [] };
     setFonts(data.fonts || []);
     setVisibleCount(40);
     setLoading(false);

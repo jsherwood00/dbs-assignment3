@@ -11,20 +11,26 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClerkSupabaseClient();
+  let supabase;
+  try {
+    supabase = await createClerkSupabaseClient();
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Authentication error"; return NextResponse.json({ error: msg }, { status: 503 });
+  }
+
   const { id } = await params;
 
-  // Delete font assignments first
   await supabase
     .from("collection_fonts")
     .delete()
-    .eq("collection_id", id);
+    .eq("collection_id", id)
+    .eq("user_id", userId);
 
-  // Delete the collection
   const { error } = await supabase
     .from("collections")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", userId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -42,7 +48,13 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClerkSupabaseClient();
+  let supabase;
+  try {
+    supabase = await createClerkSupabaseClient();
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Authentication error"; return NextResponse.json({ error: msg }, { status: 503 });
+  }
+
   const { id } = await params;
   const body = await req.json();
 
@@ -58,7 +70,8 @@ export async function PATCH(
       .from("collection_fonts")
       .delete()
       .eq("collection_id", id)
-      .eq("font_family", body.removeFont);
+      .eq("font_family", body.removeFont)
+      .eq("user_id", userId);
   }
 
   return NextResponse.json({ success: true });

@@ -8,20 +8,28 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClerkSupabaseClient();
+  let supabase;
+  try {
+    supabase = await createClerkSupabaseClient();
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Authentication error"; return NextResponse.json({ error: msg }, { status: 503 });
+  }
 
   const { data: collections, error: colErr } = await supabase
     .from("collections")
     .select("*")
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   if (colErr) {
+    console.error("Supabase collections GET error:", colErr);
     return NextResponse.json({ error: colErr.message }, { status: 500 });
   }
 
   const { data: assignments, error: assignErr } = await supabase
     .from("collection_fonts")
-    .select("*");
+    .select("*")
+    .eq("user_id", userId);
 
   if (assignErr) {
     return NextResponse.json({ error: assignErr.message }, { status: 500 });
@@ -36,7 +44,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClerkSupabaseClient();
+  let supabase;
+  try {
+    supabase = await createClerkSupabaseClient();
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Authentication error"; return NextResponse.json({ error: msg }, { status: 503 });
+  }
+
   const body = await req.json();
   const { name, description, fontFamilies } = body;
 

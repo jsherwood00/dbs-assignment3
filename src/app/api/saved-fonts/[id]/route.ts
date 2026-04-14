@@ -11,13 +11,20 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClerkSupabaseClient();
+  let supabase;
+  try {
+    supabase = await createClerkSupabaseClient();
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Authentication error"; return NextResponse.json({ error: msg }, { status: 503 });
+  }
+
   const { id } = await params;
 
   const { error } = await supabase
     .from("saved_fonts")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("user_id", userId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -35,7 +42,13 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClerkSupabaseClient();
+  let supabase;
+  try {
+    supabase = await createClerkSupabaseClient();
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Authentication error"; return NextResponse.json({ error: msg }, { status: 503 });
+  }
+
   const { id } = await params;
   const body = await req.json();
   const updates: Record<string, string | null> = {};
@@ -47,6 +60,7 @@ export async function PATCH(
     .from("saved_fonts")
     .update(updates)
     .eq("id", id)
+    .eq("user_id", userId)
     .select()
     .single();
 

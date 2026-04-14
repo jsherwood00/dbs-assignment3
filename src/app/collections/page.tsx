@@ -49,8 +49,8 @@ export default function CollectionsPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/collections").then((r) => r.json()),
-      fetch("/api/saved-fonts").then((r) => r.json()),
+      fetch("/api/collections").then((r) => r.ok ? r.json() : { collections: [], assignments: [] }),
+      fetch("/api/saved-fonts").then((r) => r.ok ? r.json() : { savedFonts: [] }),
     ]).then(([colData, sfData]) => {
       setCollections(colData.collections || []);
       setAssignments(colData.assignments || []);
@@ -92,7 +92,7 @@ export default function CollectionsPage() {
     }
     const timer = setTimeout(() => {
       fetch(`/api/fonts?search=${encodeURIComponent(fontSearch)}&sort=popularity`)
-        .then((r) => r.json())
+        .then((r) => r.ok ? r.json() : { fonts: [] })
         .then((data) => setSearchResults((data.fonts || []).slice(0, 10)));
     }, 200);
     return () => clearTimeout(timer);

@@ -8,14 +8,21 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClerkSupabaseClient();
+  let supabase;
+  try {
+    supabase = await createClerkSupabaseClient();
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Authentication error"; return NextResponse.json({ error: msg }, { status: 503 });
+  }
 
   const { data, error } = await supabase
     .from("saved_fonts")
     .select("*")
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   if (error) {
+    console.error("Supabase saved_fonts GET error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
@@ -28,7 +35,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClerkSupabaseClient();
+  let supabase;
+  try {
+    supabase = await createClerkSupabaseClient();
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Authentication error"; return NextResponse.json({ error: msg }, { status: 503 });
+  }
+
   const body = await req.json();
   const { fontFamily, fontCategory, note } = body;
 

@@ -66,7 +66,7 @@ export default function FontDetailPage({
 
   useEffect(() => {
     fetch(`/api/fonts?search=${encodeURIComponent(family)}`)
-      .then((r) => r.json())
+      .then((r) => r.ok ? r.json() : { fonts: [] })
       .then((data) => {
         const match = (data.fonts || []).find(
           (f: FontDetail) => f.family === family
