@@ -27,14 +27,9 @@ export default function Nav() {
               Browse
             </Link>
             {isSignedIn && (
-              <>
-                <Link href="/library" className={linkClass("/library")}>
-                  Library
-                </Link>
-                <Link href="/collections" className={linkClass("/collections")}>
-                  Collections
-                </Link>
-              </>
+              <Link href="/collections" className={linkClass("/collections")}>
+                Collections
+              </Link>
             )}
           </div>
         </div>

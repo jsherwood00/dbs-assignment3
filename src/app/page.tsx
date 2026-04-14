@@ -401,49 +401,16 @@ export default function BrowsePage() {
           className="w-full px-4 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
         />
 
-        {/* Find Similar + Undo + Show Names bar */}
-        <div className="flex items-center gap-3">
-          <label className="inline-flex items-center gap-2 text-sm text-muted cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={showNames}
-              onChange={(e) => setShowNames(e.target.checked)}
-              className="accent-accent w-4 h-4 cursor-pointer"
-            />
-            Show names
-          </label>
-
-          {isSignedIn && (
-            <>
-              {selectedFamilies.size === 0 && undoStack.length === 0 ? (
-                <p className="text-sm text-muted">Select fonts to find similar fonts</p>
-              ) : (
-                <>
-                  {selectedFamilies.size > 0 && (
-                    <button
-                      onClick={handleFindSimilar}
-                      className="px-5 py-2.5 text-sm font-medium rounded-lg transition-colors cursor-pointer bg-accent text-white hover:bg-accent/90"
-                    >
-                      Find similar ({selectedFamilies.size} selected)
-                    </button>
-                  )}
-                  {undoStack.length > 0 && (
-                    <button
-                      onClick={handleUndo}
-                      className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-muted border border-border rounded-lg hover:text-foreground hover:border-foreground transition-colors cursor-pointer"
-                      title="Go back to previous view"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
-                      </svg>
-                      Undo
-                    </button>
-                  )}
-                </>
-              )}
-            </>
-          )}
-        </div>
+        {/* Show names toggle */}
+        <label className="inline-flex items-center gap-2 text-sm text-muted cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={showNames}
+            onChange={(e) => setShowNames(e.target.checked)}
+            className="accent-accent w-4 h-4 cursor-pointer"
+          />
+          Show names
+        </label>
       </div>
 
       {/* Recommendation label */}
@@ -491,6 +458,49 @@ export default function BrowsePage() {
             <div ref={sentinelRef} className="h-10" />
           )}
         </>
+      )}
+
+      {/* Sticky bottom bar for Find Similar / Undo */}
+      {isSignedIn && (selectedFamilies.size > 0 || undoStack.length > 0) && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-border py-3 px-4">
+          <div className="max-w-7xl mx-auto flex items-center gap-3">
+            {selectedFamilies.size > 0 && (
+              <>
+                <button
+                  onClick={handleFindSimilar}
+                  className="px-5 py-2.5 text-sm font-medium rounded-lg transition-colors cursor-pointer bg-accent text-white hover:bg-accent/90"
+                >
+                  Find similar ({selectedFamilies.size} selected)
+                </button>
+                <button
+                  onClick={() => setSelectedFamilies(new Set())}
+                  className="text-sm text-muted hover:text-foreground cursor-pointer"
+                >
+                  Clear selection
+                </button>
+              </>
+            )}
+            {undoStack.length > 0 && (
+              <button
+                onClick={handleUndo}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-muted border border-border rounded-lg hover:text-foreground hover:border-foreground transition-colors cursor-pointer"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                </svg>
+                Undo
+              </button>
+            )}
+            {recommendedFonts && (
+              <button
+                onClick={() => { setRecommendedFonts(null); setSelectedFamilies(new Set()); }}
+                className="text-sm text-muted hover:text-foreground cursor-pointer"
+              >
+                Back to all fonts
+              </button>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

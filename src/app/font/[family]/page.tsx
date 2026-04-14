@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useRef } from "react";
 import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
 
@@ -16,6 +16,16 @@ interface SavedFont {
   font_family: string;
   note: string | null;
   collection: string;
+}
+
+interface Collection {
+  id: string;
+  name: string;
+}
+
+interface Assignment {
+  collection_id: string;
+  font_family: string;
 }
 
 const SAMPLE_SIZES = [
@@ -42,6 +52,10 @@ export default function FontDetailPage({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [noteEdited, setNoteEdited] = useState(false);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [showCollectionPicker, setShowCollectionPicker] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const link = document.createElement("link");
@@ -65,10 +79,7 @@ export default function FontDetailPage({
   useEffect(() => {
     if (!isSignedIn) return;
     fetch("/api/saved-fonts")
-      .then((r) => {
-        if (!r.ok) return null;
-        return r.json();
-      })
+      .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (!data) return;
         const match = (data.savedFonts || []).find(
@@ -80,57 +91,88 @@ export default function FontDetailPage({
         }
       })
       .catch(() => {});
+    fetch("/api/collections")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data) {
+          setCollections(data.collections || []);
+          setAssignments(
+            (data.assignments || []).filter((a: Assignment) => a.font_family === family)
+          );
+        }
+      })
+      .catch(() => {});
   }, [isSignedIn, family]);
 
-  const handleToggleSave = async () => {
-    if (saving) return;
-    setSaving(true);
-
-    if (saved) {
-      // Unsave
-      const res = await fetch(`/api/saved-fonts/${saved.id}`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        setSaved(null);
-        setNote("");
-        setNoteEdited(false);
+  // Close picker on outside click
+  useEffect(() => {
+    if (!showCollectionPicker) return;
+    const handler = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setShowCollectionPicker(false);
       }
-    } else {
-      // Save
-      const res = await fetch("/api/saved-fonts", {
-        method: "POST",
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showCollectionPicker]);
+
+  const handleNoteBlur = async () => {
+    if (!noteEdited || saving) return;
+    setSaving(true);
+    if (saved) {
+      const res = await fetch(`/api/saved-fonts/${saved.id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fontFamily: family,
-          fontCategory: font?.category,
-          note: note || null,
-        }),
+        body: JSON.stringify({ note }),
       });
       if (res.ok) {
         const data = await res.json();
         setSaved(data.savedFont);
-        setNoteEdited(false);
+      }
+    } else if (note.trim()) {
+      const res = await fetch("/api/saved-fonts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fontFamily: family, fontCategory: font?.category, note }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSaved(data.savedFont);
       }
     }
+    setNoteEdited(false);
     setSaving(false);
   };
 
-  const handleSaveNote = async () => {
-    if (!saved || saving) return;
-    setSaving(true);
-    const res = await fetch(`/api/saved-fonts/${saved.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ note }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setSaved(data.savedFont);
-      setNoteEdited(false);
+  const isInCollection = (colId: string) =>
+    assignments.some((a) => a.collection_id === colId);
+
+  const toggleCollection = async (col: Collection) => {
+    if (isInCollection(col.id)) {
+      // Remove
+      await fetch(`/api/collections/${col.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ removeFont: family }),
+      });
+      setAssignments((prev) =>
+        prev.filter((a) => !(a.collection_id === col.id))
+      );
+    } else {
+      // Add
+      await fetch(`/api/collections/${col.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ addFont: family }),
+      });
+      setAssignments((prev) => [
+        ...prev,
+        { collection_id: col.id, font_family: family },
+      ]);
     }
-    setSaving(false);
   };
+
+  const inCount = assignments.length;
 
   if (loading) {
     return <div className="text-center py-20 text-muted">Loading...</div>;
@@ -140,9 +182,7 @@ export default function FontDetailPage({
     return (
       <div className="text-center py-20">
         <p className="text-muted mb-4">Font not found.</p>
-        <Link href="/" className="text-accent hover:underline">
-          Back to browse
-        </Link>
+        <Link href="/" className="text-accent hover:underline">Back to browse</Link>
       </div>
     );
   }
@@ -156,14 +196,56 @@ export default function FontDetailPage({
         &larr; Back to browse
       </Link>
 
-      <div className="mb-8">
-        <h1
-          className="text-3xl font-bold mb-1"
-          style={{ fontFamily: `"${family}"` }}
-        >
-          {family}
-        </h1>
-        <span className="text-sm text-muted capitalize">{font.category}</span>
+      <div className="flex items-start justify-between mb-8">
+        <div>
+          <h1
+            className="text-3xl font-bold mb-1"
+            style={{ fontFamily: `"${family}"` }}
+          >
+            {family}
+          </h1>
+          <span className="text-sm text-muted capitalize">{font.category}</span>
+        </div>
+
+        {/* Add to Collection button */}
+        {isSignedIn && collections.length > 0 && (
+          <div className="relative" ref={pickerRef}>
+            <button
+              onClick={() => setShowCollectionPicker(!showCollectionPicker)}
+              className={`inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
+                inCount > 0
+                  ? "bg-accent text-white hover:bg-accent/90"
+                  : "border-2 border-accent text-accent hover:bg-accent hover:text-white"
+              }`}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              {inCount > 0 ? `In ${inCount} collection${inCount > 1 ? "s" : ""}` : "Add to Collection"}
+            </button>
+
+            {showCollectionPicker && (
+              <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-border rounded-xl shadow-lg z-10 py-2">
+                {collections.map((col) => (
+                  <button
+                    key={col.id}
+                    onClick={() => toggleCollection(col)}
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 flex items-center gap-3 cursor-pointer"
+                  >
+                    <span className={`w-5 h-5 rounded border-2 flex items-center justify-center text-xs ${
+                      isInCollection(col.id)
+                        ? "bg-accent border-accent text-white"
+                        : "border-border"
+                    }`}>
+                      {isInCollection(col.id) && "✓"}
+                    </span>
+                    {col.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Note */}
@@ -172,22 +254,12 @@ export default function FontDetailPage({
           <textarea
             placeholder="Add a note... e.g. 'Good for headings, pair with Inter'"
             value={note}
-            onChange={(e) => {
-              setNote(e.target.value);
-              setNoteEdited(true);
-            }}
+            onChange={(e) => { setNote(e.target.value); setNoteEdited(true); }}
+            onBlur={handleNoteBlur}
             rows={2}
             className="w-full px-4 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent resize-none"
           />
-          {noteEdited && saved && (
-            <button
-              onClick={handleSaveNote}
-              disabled={saving}
-              className="mt-2 px-4 py-1.5 text-sm font-medium text-white bg-accent hover:bg-accent/90 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
-            >
-              {saving ? "Saving..." : "Save note"}
-            </button>
-          )}
+          {saving && <p className="mt-1 text-xs text-muted">Saving...</p>}
         </section>
       )}
 
@@ -196,10 +268,7 @@ export default function FontDetailPage({
         {SAMPLE_SIZES.map(({ label, size, weight }) => (
           <div key={label}>
             <p className="text-xs text-muted mb-1">{label}</p>
-            <p
-              className={`${size} ${weight}`}
-              style={{ fontFamily: `"${family}"` }}
-            >
+            <p className={`${size} ${weight}`} style={{ fontFamily: `"${family}"` }}>
               The quick brown fox jumps over the lazy dog
             </p>
           </div>
@@ -209,10 +278,7 @@ export default function FontDetailPage({
       {/* Character set */}
       <section className="mb-10">
         <h2 className="text-sm font-medium text-muted mb-3">Character Set</h2>
-        <p
-          className="text-2xl tracking-wide break-all"
-          style={{ fontFamily: `"${family}"` }}
-        >
+        <p className="text-2xl tracking-wide break-all" style={{ fontFamily: `"${family}"` }}>
           {CHARSET_PREVIEW}
         </p>
       </section>
@@ -224,12 +290,7 @@ export default function FontDetailPage({
         </h2>
         <div className="flex flex-wrap gap-2">
           {font.variants.map((v) => (
-            <span
-              key={v}
-              className="px-3 py-1 text-xs border border-border rounded-lg capitalize"
-            >
-              {v}
-            </span>
+            <span key={v} className="px-3 py-1 text-xs border border-border rounded-lg capitalize">{v}</span>
           ))}
         </div>
       </section>
@@ -239,12 +300,7 @@ export default function FontDetailPage({
         <h2 className="text-sm font-medium text-muted mb-3">Subsets</h2>
         <div className="flex flex-wrap gap-2">
           {font.subsets.map((s) => (
-            <span
-              key={s}
-              className="px-3 py-1 text-xs border border-border rounded-lg capitalize"
-            >
-              {s}
-            </span>
+            <span key={s} className="px-3 py-1 text-xs border border-border rounded-lg capitalize">{s}</span>
           ))}
         </div>
       </section>
