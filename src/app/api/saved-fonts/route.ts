@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { supabase } from "@/lib/supabase";
+import { createClerkSupabaseClient } from "@/lib/supabase";
 
 export async function GET() {
   const { userId } = await auth();
@@ -8,10 +8,11 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const supabase = await createClerkSupabaseClient();
+
   const { data, error } = await supabase
     .from("saved_fonts")
     .select("*")
-    .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -27,14 +28,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const supabase = await createClerkSupabaseClient();
   const body = await req.json();
   const { fontFamily, fontCategory, note } = body;
 
   if (!fontFamily) {
-    return NextResponse.json(
-      { error: "fontFamily is required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "fontFamily is required" }, { status: 400 });
   }
 
   const { data, error } = await supabase

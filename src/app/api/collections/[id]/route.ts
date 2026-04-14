@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { supabase } from "@/lib/supabase";
+import { createClerkSupabaseClient } from "@/lib/supabase";
 
 export async function DELETE(
   _req: NextRequest,
@@ -11,21 +11,20 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const supabase = await createClerkSupabaseClient();
   const { id } = await params;
 
   // Delete font assignments first
   await supabase
     .from("collection_fonts")
     .delete()
-    .eq("collection_id", id)
-    .eq("user_id", userId);
+    .eq("collection_id", id);
 
   // Delete the collection
   const { error } = await supabase
     .from("collections")
     .delete()
-    .eq("id", id)
-    .eq("user_id", userId);
+    .eq("id", id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -34,7 +33,6 @@ export async function DELETE(
   return NextResponse.json({ success: true });
 }
 
-// Add or remove fonts from a collection
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -44,6 +42,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const supabase = await createClerkSupabaseClient();
   const { id } = await params;
   const body = await req.json();
 
@@ -59,8 +58,7 @@ export async function PATCH(
       .from("collection_fonts")
       .delete()
       .eq("collection_id", id)
-      .eq("font_family", body.removeFont)
-      .eq("user_id", userId);
+      .eq("font_family", body.removeFont);
   }
 
   return NextResponse.json({ success: true });

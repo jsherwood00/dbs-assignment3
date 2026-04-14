@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { supabase } from "@/lib/supabase";
+import { createClerkSupabaseClient } from "@/lib/supabase";
 
 export async function GET() {
   const { userId } = await auth();
@@ -8,21 +8,20 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const supabase = await createClerkSupabaseClient();
+
   const { data: collections, error: colErr } = await supabase
     .from("collections")
     .select("*")
-    .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   if (colErr) {
     return NextResponse.json({ error: colErr.message }, { status: 500 });
   }
 
-  // Also fetch collection_fonts assignments
   const { data: assignments, error: assignErr } = await supabase
     .from("collection_fonts")
-    .select("*")
-    .eq("user_id", userId);
+    .select("*");
 
   if (assignErr) {
     return NextResponse.json({ error: assignErr.message }, { status: 500 });
@@ -37,6 +36,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const supabase = await createClerkSupabaseClient();
   const body = await req.json();
   const { name, description, fontFamilies } = body;
 
@@ -44,7 +44,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "name is required" }, { status: 400 });
   }
 
-  // Create collection
   const { data: collection, error: colErr } = await supabase
     .from("collections")
     .insert({ user_id: userId, name, description: description || null })
@@ -55,7 +54,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: colErr.message }, { status: 500 });
   }
 
-  // Add fonts if provided
   if (fontFamilies && fontFamilies.length > 0) {
     const rows = fontFamilies.map((family: string) => ({
       user_id: userId,

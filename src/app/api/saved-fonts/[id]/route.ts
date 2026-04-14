@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { supabase } from "@/lib/supabase";
+import { createClerkSupabaseClient } from "@/lib/supabase";
 
 export async function DELETE(
   _req: NextRequest,
@@ -11,13 +11,13 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const supabase = await createClerkSupabaseClient();
   const { id } = await params;
 
   const { error } = await supabase
     .from("saved_fonts")
     .delete()
-    .eq("id", id)
-    .eq("user_id", userId);
+    .eq("id", id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -35,6 +35,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const supabase = await createClerkSupabaseClient();
   const { id } = await params;
   const body = await req.json();
   const updates: Record<string, string | null> = {};
@@ -46,7 +47,6 @@ export async function PATCH(
     .from("saved_fonts")
     .update(updates)
     .eq("id", id)
-    .eq("user_id", userId)
     .select()
     .single();
 
