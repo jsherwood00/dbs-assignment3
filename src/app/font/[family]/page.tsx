@@ -156,40 +156,14 @@ export default function FontDetailPage({
         &larr; Back to browse
       </Link>
 
-      <div className="flex items-start justify-between mb-8">
-        <div>
-          <h1
-            className="text-3xl font-bold mb-1"
-            style={{ fontFamily: `"${family}"` }}
-          >
-            {family}
-          </h1>
-          <span className="text-sm text-muted capitalize">{font.category}</span>
-        </div>
-        {isSignedIn && (
-          <button
-            onClick={handleToggleSave}
-            disabled={saving}
-            className={`p-2 rounded-lg transition-colors cursor-pointer ${
-              saved ? "text-indigo-300" : "text-indigo-200 hover:text-indigo-300"
-            }`}
-            title={saved ? "Remove from library" : "Save to library"}
-          >
-            <svg
-              className="w-7 h-7"
-              fill={saved ? "currentColor" : "none"}
-              stroke="currentColor"
-              strokeWidth={2}
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-              />
-            </svg>
-          </button>
-        )}
+      <div className="mb-8">
+        <h1
+          className="text-3xl font-bold mb-1"
+          style={{ fontFamily: `"${family}"` }}
+        >
+          {family}
+        </h1>
+        <span className="text-sm text-muted capitalize">{font.category}</span>
       </div>
 
       {/* Note */}
