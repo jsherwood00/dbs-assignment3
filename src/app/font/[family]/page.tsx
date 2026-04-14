@@ -171,7 +171,7 @@ export default function FontDetailPage({
             onClick={handleToggleSave}
             disabled={saving}
             className={`p-2 rounded-lg transition-colors cursor-pointer ${
-              saved ? "text-accent" : "text-muted hover:text-accent"
+              saved ? "text-indigo-300" : "text-indigo-200 hover:text-indigo-300"
             }`}
             title={saved ? "Remove from library" : "Save to library"}
           >
